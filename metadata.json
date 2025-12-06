@@ -1,0 +1,7 @@
+{
+  "name": "NeoBank AI Agent",
+  "description": "A next-generation banking assistant that handles account opening with biometric verification, document collection, and transaction management using Gemini AI.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
