@@ -34,7 +34,7 @@ const collectAccountDetailsTool: Tool = {
 const verifyNadraTool: Tool = {
   name: "verify_with_nadra",
   description:
-    "Verifies the user's Identity Card number against the National Database (NADRA) to ensure validity and check for existing bank accounts. Returns verification status and existence check.",
+    "Verifies the user's Identity Card number against the National Database (NADRA) to ensure validity and check for existing bank accounts. ONLY call this ONCE after the account form is completely filled. Do not call this tool more than once per conversation.",
   parameters: {
     type: "object",
     properties: {
@@ -50,7 +50,7 @@ const verifyNadraTool: Tool = {
 const createAccountTool: Tool = {
   name: "create_account",
   description:
-    "Finalizes the account opening. Call this ONLY after NADRA verification returns success and confirms the user does not already exist.",
+    "Finalizes the account opening. Call this ONLY after NADRA verification returns success and confirms the user does not already exist. Can be called after biometric verification (with biometric data) or after form submission, depending on the flow chosen.",
   parameters: {
     type: "object",
     properties: {
@@ -97,30 +97,61 @@ const tools: Tool[] = [
   processTransactionTool,
 ];
 
-const SYSTEM_INSTRUCTION = `You are Vault, a banking AI agent. You MUST follow this EXACTLY:
+const SYSTEM_INSTRUCTION = `You are Vault, a banking AI agent. Follow this workflow EXACTLY:
 
-STEP 1: When user wants account, say: "I'll help you open an account. Let me verify your identity first."
-Then write: [TOOL_CALL: trigger_biometric_verification({})]
+WORKFLOW - OPTION A (WITH FORM):
+1. User says "I want to open account"
+   → Say: "I'll help you open an account. Let me verify your identity first."
+   → Call: [TOOL_CALL: trigger_biometric_verification({})]
+   → STOP. Wait for biometric result.
 
-STEP 2: When biometric succeeds, say: "Great! Now I need your account details."
-Then write: [TOOL_CALL: collect_account_details({})]
+2. After biometric SUCCESS:
+   → Say: "Great! Now I need your account details."
+   → Call: [TOOL_CALL: collect_account_details({})]
+   → STOP. Wait for user to fill form.
 
-STEP 3: When you get account form data, say: "Verifying your identity in our system."
-Then write: [TOOL_CALL: verify_with_nadra({"identityCard": "VALUE_FROM_FORM"})]
+3. After form is COMPLETELY FILLED:
+   → Say: "Verifying your identity in our system."
+   → Call: [TOOL_CALL: verify_with_nadra({"identityCard": "VALUE_FROM_FORM"})]
+   → STOP. Wait for NADRA result.
 
-STEP 4: If NADRA verified and user doesn't exist:
-Say: "Creating your account now."
-Then write: [TOOL_CALL: create_account({"name": "VALUE", "accountType": "VALUE", "identityCard": "VALUE"})]
+4. If NADRA says "SUCCESS" and "User does not exist":
+   → Say: "Creating your account now."
+   → Call: [TOOL_CALL: create_account({...all data...})]
+   → STOP.
 
-RULES:
-- ALWAYS include tool calls in format: [TOOL_CALL: name(args)]
-- Keep responses SHORT
-- Be professional
+WORKFLOW - OPTION B (FAST TRACK - BIOMETRIC ONLY):
+1. User says "I want to open account"
+   → Say: "I'll help you open an account. Let me verify your identity first."
+   → Call: [TOOL_CALL: trigger_biometric_verification({})]
+   → STOP. Wait for biometric result.
+
+2. After biometric SUCCESS:
+   → If biometric result includes user data (name, ID):
+     → Say: "Great! I have your details. Verifying with our system."
+     → Call: [TOOL_CALL: verify_with_nadra({"identityCard": "ID_FROM_BIOMETRIC"})]
+     → STOP. Wait for NADRA result.
+
+3. If NADRA says "SUCCESS" and "User does not exist":
+   → Say: "Creating your account now."
+   → Call: [TOOL_CALL: create_account({...data from biometric...})]
+   → STOP.
+
+CRITICAL RULES:
+- ONLY call verify_with_nadra ONE TIME per conversation
+- DO NOT call verify_with_nadra multiple times
+- DO NOT call verify_with_nadra before form is filled (in Option A) or without biometric data (in Option B)
+- DO NOT retry NADRA verification
+- Always wait for tool results before proceeding
+- Use format: [TOOL_CALL: name(args)]
+- Choose Option A (form) OR Option B (fast track) based on biometric result
 `;
 
 export class GemmaService {
   private llamaCppUrl: string;
   private conversationHistory: Array<{ role: string; content: string }> = [];
+  // Track which tools have been called to prevent loops
+  private toolsCalledThisConversation: Set<string> = new Set();
 
   constructor() {
     // Use proxy URL for CORS compatibility
@@ -169,15 +200,27 @@ ${
         const toolName = match[1];
         const argsStr = match[2];
 
+        // CRITICAL: Prevent verify_with_nadra from being called multiple times
+        if (toolName === "verify_with_nadra") {
+          if (this.toolsCalledThisConversation.has(toolName)) {
+            console.warn(
+              `[GemmaService] BLOCKED: verify_with_nadra already called once in this conversation. Preventing duplicate call.`
+            );
+            continue; // Skip this tool call
+          }
+        }
+
         try {
           // Try to parse as JSON
           const args = JSON.parse(argsStr);
           toolCalls.push({ name: toolName, args });
+          this.toolsCalledThisConversation.add(toolName);
           console.log(`[GemmaService] Parsed tool call: ${toolName}`, args);
         } catch (e) {
           // If not valid JSON, try as empty object
           if (argsStr.trim() === "" || argsStr.trim() === "{}") {
             toolCalls.push({ name: toolName, args: {} });
+            this.toolsCalledThisConversation.add(toolName);
             console.log(
               `[GemmaService] Parsed tool call (empty args): ${toolName}`
             );
@@ -199,20 +242,27 @@ ${
       if (
         (lowerText.includes("biometric") || lowerText.includes("verify")) &&
         !lowerText.includes("already") &&
-        !lowerText.includes("failed")
+        !lowerText.includes("failed") &&
+        !this.toolsCalledThisConversation.has("trigger_biometric_verification")
       ) {
         console.log(
           "[GemmaService] Inferring biometric verification tool from context"
         );
         toolCalls.push({ name: "trigger_biometric_verification", args: {} });
+        this.toolsCalledThisConversation.add("trigger_biometric_verification");
       }
 
       // Check if model is talking about account details but didn't format it
-      if (lowerText.includes("account details") || lowerText.includes("form")) {
+      if (
+        lowerText.includes("account details") &&
+        lowerText.includes("form") &&
+        !this.toolsCalledThisConversation.has("collect_account_details")
+      ) {
         console.log(
           "[GemmaService] Inferring collect_account_details tool from context"
         );
         toolCalls.push({ name: "collect_account_details", args: {} });
+        this.toolsCalledThisConversation.add("collect_account_details");
       }
     }
 
@@ -332,6 +382,7 @@ ${
 
   resetConversation() {
     this.conversationHistory = [];
+    this.toolsCalledThisConversation.clear();
   }
 }
 
