@@ -15,6 +15,7 @@
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - **Node.js** (v16+)
 - **Llama.cpp Server** running with Gemma model
 - **Webcam** (for biometric verification, or use demo mode)
@@ -22,17 +23,20 @@
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repo-url>
 cd neobank-ai-agent
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Configure environment variables:
+
 ```bash
 cp .env.example .env  # if .env.example exists
 # Or create .env with:
@@ -40,11 +44,13 @@ LLAMA_CPP_URL=http://localhost:8080
 ```
 
 4. Start Llama.cpp server (in another terminal):
+
 ```bash
 ./llama-server -m gemma-2-2b-it-Q4_K_M.gguf --host 0.0.0.0 --port 8080
 ```
 
 5. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -54,12 +60,14 @@ npm run dev
 ## 🔧 Configuration
 
 ### Environment Variables (.env)
+
 ```env
 # Llama.cpp server URL (default: http://localhost:8000)
 LLAMA_CPP_URL=http://localhost:8080
 ```
 
 ### Vite Config
+
 - Development server runs on port 3000
 - Proxy to Llama.cpp at `/api/llama`
 - Hot module reloading enabled
@@ -112,16 +120,19 @@ LLAMA_CPP_URL=http://localhost:8080
 ## 🐛 Troubleshooting
 
 ### Camera Permission Issues
+
 - See [BIOMETRIC_SETUP.md](./BIOMETRIC_SETUP.md)
 - Grant camera permission when prompted
 - Use "Demo Mode" to skip camera verification
 
 ### Llama.cpp Connection Error
+
 - Verify server is running on correct port
 - Check `.env` LLAMA_CPP_URL setting
 - Ensure proxy is configured in `vite.config.ts`
 
 ### Tool Calling Issues
+
 - See [TOOL_CALL_DEBUG.md](./TOOL_CALL_DEBUG.md)
 - Check browser console for `[GemmaService]` logs
 - Consider upgrading to larger Gemma model (9B variant)
@@ -129,11 +140,13 @@ LLAMA_CPP_URL=http://localhost:8080
 ## 📦 Build & Deploy
 
 ### Build for Production
+
 ```bash
 npm run build
 ```
 
 ### Preview Build
+
 ```bash
 npm run preview
 ```
