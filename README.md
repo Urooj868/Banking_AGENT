@@ -151,7 +151,7 @@ npm run build
 npm run preview
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Feel free to fork and submit pull requests for improvements.
 
