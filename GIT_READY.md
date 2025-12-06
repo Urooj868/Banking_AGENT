@@ -18,13 +18,14 @@ Status: ✅ Clean (nothing to commit)
 
 ```
 3501c9d - docs: Add Git setup and repository management guides
-77b8ca2 - docs: Update README with comprehensive project documentation  
+77b8ca2 - docs: Update README with comprehensive project documentation
 3fc2375 - Initial commit: Neobank AI Agent with Gemma/Llama.cpp integration
 ```
 
 ## 📁 What's Included
 
 ### Source Code
+
 ✅ React components (BiometricScanner, Dashboard)
 ✅ Gemma AI service with Llama.cpp
 ✅ TypeScript configuration
@@ -32,6 +33,7 @@ Status: ✅ Clean (nothing to commit)
 ✅ Complete banking workflow logic
 
 ### Documentation
+
 📖 README.md - Full project guide
 📖 BIOMETRIC_SETUP.md - Camera setup
 📖 TOOL_CALL_DEBUG.md - AI debugging
@@ -40,6 +42,7 @@ Status: ✅ Clean (nothing to commit)
 📖 REPOSITORY_SETUP.md - Repository info
 
 ### Protected (Not Committed)
+
 🔒 .env - API keys safe
 🔒 node_modules/ - Dependencies excluded
 🔒 dist/ - Build output excluded
@@ -49,11 +52,13 @@ Status: ✅ Clean (nothing to commit)
 ### Quick Steps
 
 1. **Create GitHub repo**
+
    - Go to https://github.com/new
    - Name: `neobank-ai-agent`
    - Click Create
 
 2. **Connect and push**
+
    ```bash
    cd /home/urooj/Downloads/neobank-ai-agent
    git remote add origin https://github.com/YOUR_USERNAME/neobank-ai-agent.git
@@ -102,6 +107,7 @@ git push origin main
 ## 🎯 You're All Set!
 
 Your code is:
+
 - ✅ Version controlled locally
 - ✅ Fully documented
 - ✅ Ready to push to GitHub
